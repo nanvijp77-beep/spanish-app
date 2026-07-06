@@ -36,16 +36,18 @@
 
   nav {
     display: flex;
-    gap: 8px;
-    margin: 16px 0;
+    gap: 6px;
+    margin: 16px 8px;
+    flex-wrap: wrap;
+    justify-content: center;
   }
   nav button {
-    padding: 10px 20px;
+    padding: 8px 14px;
     border: 2px solid var(--main);
     border-radius: 24px;
     background: #fff;
     color: var(--main);
-    font-size: 1rem;
+    font-size: 0.9rem;
     font-weight: bold;
     cursor: pointer;
   }
@@ -282,6 +284,105 @@
     font-size: 0.75rem;
     color: #aaa;
   }
+
+  /* ===== 文法 ===== */
+  .grammar-item {
+    background: var(--card);
+    border-radius: 12px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    overflow: hidden;
+  }
+  .grammar-item summary {
+    padding: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    color: var(--main);
+    list-style: none;
+  }
+  .grammar-item summary::before { content: "▸ "; }
+  .grammar-item[open] summary::before { content: "▾ "; }
+  .grammar-body { padding: 0 14px 14px; font-size: 0.95rem; line-height: 1.7; }
+  .grammar-body .ex {
+    background: var(--bg);
+    border-left: 4px solid var(--yellow);
+    padding: 8px 10px;
+    margin: 8px 0;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .grammar-body .ex .es-text { font-weight: bold; color: var(--main); }
+  .grammar-body .ex small { display: block; color: #777; font-weight: normal; }
+  .mini-speak {
+    border: none;
+    background: var(--yellow);
+    color: #fff;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    cursor: pointer;
+    flex-shrink: 0;
+    font-size: 0.95rem;
+  }
+
+  /* ===== 会話モード ===== */
+  .talk-levels { display: flex; flex-direction: column; gap: 10px; }
+  .talk-levels button {
+    padding: 14px;
+    border: 2px solid var(--main);
+    border-radius: 12px;
+    background: #fff;
+    font-size: 1rem;
+    font-weight: bold;
+    color: var(--main);
+    cursor: pointer;
+    text-align: left;
+  }
+  .talk-levels button small { display: block; color: #888; font-weight: normal; margin-top: 2px; }
+  .chat-box {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 12px;
+    min-height: 260px;
+    max-height: 45vh;
+    overflow-y: auto;
+    box-shadow: inset 0 1px 4px rgba(0,0,0,0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .bubble { max-width: 85%; padding: 10px 12px; border-radius: 14px; font-size: 0.95rem; line-height: 1.5; }
+  .bubble .ja-sub { display: block; font-size: 0.78rem; opacity: 0.75; margin-top: 4px; }
+  .bubble.bot { background: var(--bg); border: 1px solid #eadfce; align-self: flex-start; }
+  .bubble.user { background: var(--ok); color: #fff; align-self: flex-end; }
+  .bubble.bot .bubble-speak { border: none; background: none; cursor: pointer; font-size: 1rem; padding: 0 4px; }
+  .talk-choices { display: flex; flex-direction: column; gap: 8px; }
+  .talk-choices button {
+    padding: 12px;
+    border: 2px solid var(--ok);
+    border-radius: 12px;
+    background: #fff;
+    color: var(--text);
+    font-size: 0.95rem;
+    cursor: pointer;
+    text-align: left;
+  }
+  .talk-choices button small { display: block; color: #888; }
+  .talk-tools { display: flex; gap: 8px; margin-top: 10px; justify-content: center; flex-wrap: wrap; }
+  .talk-tools button {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 12px;
+    background: var(--yellow);
+    color: #fff;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  .talk-tools button.quit { background: #bbb; }
 </style>
 </head>
 <body>
@@ -292,8 +393,10 @@
 </header>
 
 <nav>
-  <button id="tabCards" class="active" onclick="switchTab('cards')">📖 単語カード</button>
+  <button id="tabCards" class="active" onclick="switchTab('cards')">📖 単語</button>
   <button id="tabQuiz" onclick="switchTab('quiz')">✏️ クイズ</button>
+  <button id="tabGrammar" onclick="switchTab('grammar')">📚 文法</button>
+  <button id="tabTalk" onclick="switchTab('talk')">💬 会話</button>
 </nav>
 
 <main>
@@ -358,9 +461,76 @@
       <button class="quiz-next" onclick="startQuiz()">もう一回チャレンジ</button>
     </div>
   </section>
+
+  <!-- 文法画面 -->
+  <section id="screenGrammar" class="screen">
+    <details class="grammar-item">
+      <summary>① 名詞に「男女」がある</summary>
+      <div class="grammar-body">
+        スペイン語の名詞は男性か女性に分かれます。男性には el、女性には la を付けます。だいたい <b>-o で終わると男性、-a で終わると女性</b>です。
+        <div class="ex"><span class="es-text">el libro<small>本（男性）</small></span><button class="mini-speak" onclick="speak('el libro')">🔊</button></div>
+        <div class="ex"><span class="es-text">la casa<small>家（女性）</small></span><button class="mini-speak" onclick="speak('la casa')">🔊</button></div>
+      </div>
+    </details>
+    <details class="grammar-item">
+      <summary>② 「私は〜です」ser と estar</summary>
+      <div class="grammar-body">
+        「です」が2種類あります。<b>ser＝ずっと変わらないこと</b>（名前・出身）、<b>estar＝今の状態</b>（気分・場所）に使います。
+        <div class="ex"><span class="es-text">Soy de Japón.<small>私は日本出身です（ser）</small></span><button class="mini-speak" onclick="speak('Soy de Japón')">🔊</button></div>
+        <div class="ex"><span class="es-text">Estoy cansada.<small>私は（今）疲れています（estar）</small></span><button class="mini-speak" onclick="speak('Estoy cansada')">🔊</button></div>
+      </div>
+    </details>
+    <details class="grammar-item">
+      <summary>③ 動詞は主語で形が変わる（主語は省略OK）</summary>
+      <div class="grammar-body">
+        動詞の語尾が「誰がやるか」で変わります。だから主語を言わなくても伝わります。hablar（話す）なら：<b>hablo＝私が話す／hablas＝あなたが話す</b>。
+        <div class="ex"><span class="es-text">Hablo español.<small>私はスペイン語を話します</small></span><button class="mini-speak" onclick="speak('Hablo español')">🔊</button></div>
+        <div class="ex"><span class="es-text">¿Hablas japonés?<small>あなたは日本語を話しますか？</small></span><button class="mini-speak" onclick="speak('¿Hablas japonés?')">🔊</button></div>
+      </div>
+    </details>
+    <details class="grammar-item">
+      <summary>④ 疑問文は「¿ ?」・びっくりは「¡ !」</summary>
+      <div class="grammar-body">
+        スペイン語では、質問の文の<b>最初にひっくり返った「¿」</b>を付けます。感嘆文も同じで「¡ !」で挟みます。語順を変えなくても、そのまま質問にできるので簡単です。
+        <div class="ex"><span class="es-text">¿Qué tal?<small>調子はどう？</small></span><button class="mini-speak" onclick="speak('¿Qué tal?')">🔊</button></div>
+        <div class="ex"><span class="es-text">¡Qué bonito!<small>なんてきれい！</small></span><button class="mini-speak" onclick="speak('¡Qué bonito!')">🔊</button></div>
+      </div>
+    </details>
+    <details class="grammar-item">
+      <summary>⑤ 便利な3大フレーズ</summary>
+      <div class="grammar-body">
+        この3つだけで旅行はかなり乗り切れます。<b>Quiero〜＝〜が欲しい／Me gusta〜＝〜が好き／¿Dónde está〜?＝〜はどこ？</b>
+        <div class="ex"><span class="es-text">Quiero un café.<small>コーヒーが欲しいです</small></span><button class="mini-speak" onclick="speak('Quiero un café')">🔊</button></div>
+        <div class="ex"><span class="es-text">Me gusta la música.<small>音楽が好きです</small></span><button class="mini-speak" onclick="speak('Me gusta la música')">🔊</button></div>
+        <div class="ex"><span class="es-text">¿Dónde está el baño?<small>トイレはどこですか？</small></span><button class="mini-speak" onclick="speak('¿Dónde está el baño?')">🔊</button></div>
+      </div>
+    </details>
+    <details class="grammar-item">
+      <summary>⑥ 過去と未来のかんたんな言い方</summary>
+      <div class="grammar-body">
+        未来は超簡単：<b>voy a ＋動詞＝〜するつもり</b>。過去は語尾が変わります（-ar動詞なら <b>-é</b>：hablé＝話した）。まずは「voy a」だけ覚えればOK！
+        <div class="ex"><span class="es-text">Voy a estudiar español.<small>スペイン語を勉強するつもりです</small></span><button class="mini-speak" onclick="speak('Voy a estudiar español')">🔊</button></div>
+        <div class="ex"><span class="es-text">Ayer trabajé mucho.<small>昨日はたくさん働きました</small></span><button class="mini-speak" onclick="speak('Ayer trabajé mucho')">🔊</button></div>
+      </div>
+    </details>
+  </section>
+
+  <!-- 会話画面 -->
+  <section id="screenTalk" class="screen">
+    <div id="talkLevelSelect" class="talk-levels"></div>
+    <div id="talkPlay" class="hidden">
+      <div class="chat-box" id="chatBox"></div>
+      <div class="talk-choices" id="talkChoices"></div>
+      <div class="pron-feedback" id="talkFeedback"></div>
+      <div class="talk-tools">
+        <button onclick="talkListenChoice()">🎤 声で答える</button>
+        <button class="quit" onclick="showTalkLevels()">← レベル選択に戻る</button>
+      </div>
+    </div>
+  </section>
 </main>
 
-<footer>フェーズ2試作版 — 単語カード＆クイズ＆発音（🔊聞く・🎤チェック）</footer>
+<footer>フェーズ3試作版 — 単語・クイズ・発音・文法・会話</footer>
 
 <script>
 // ===== 単語データ（スペイン語 / 読みガナ / 日本語 / カテゴリ） =====
@@ -706,13 +876,277 @@ function startPronunciationCheck() {
   recog.start();
 }
 
+// ===== AI会話モード（5レベル・台本式） =====
+const TALK_LEVELS = [
+  {
+    name: "レベル1：あいさつ",
+    desc: "はじめての出会い。あいさつと自己紹介",
+    script: [
+      { bot: { es: "¡Hola! ¿Qué tal?", ja: "やあ！調子はどう？" },
+        choices: [
+          { es: "Muy bien, gracias.", ja: "とても元気です、ありがとう" },
+          { es: "Más o menos.", ja: "まあまあです" }
+        ] },
+      { bot: { es: "Me llamo Sofía. ¿Cómo te llamas?", ja: "私はソフィア。あなたのお名前は？" },
+        choices: [
+          { es: "Me llamo Nana. Mucho gusto.", ja: "ナナです。はじめまして" }
+        ] },
+      { bot: { es: "¡Mucho gusto, Nana! ¿De dónde eres?", ja: "はじめまして、ナナ！どこの出身？" },
+        choices: [
+          { es: "Soy de Japón.", ja: "日本出身です" }
+        ] },
+      { bot: { es: "¡Japón! ¡Qué bien! Hasta luego.", ja: "日本！いいね！またね" },
+        choices: [
+          { es: "¡Adiós!", ja: "さようなら！" },
+          { es: "¡Hasta luego!", ja: "また後でね！" }
+        ] }
+    ],
+    end: { es: "¡Perfecto! Nivel 1 completado.", ja: "パーフェクト！レベル1クリア🎉" }
+  },
+  {
+    name: "レベル2：日常会話",
+    desc: "カフェで注文してみよう",
+    script: [
+      { bot: { es: "Buenos días. ¿Qué desea?", ja: "おはようございます。何にしますか？" },
+        choices: [
+          { es: "Un café, por favor.", ja: "コーヒーを1つお願いします" },
+          { es: "Un té, por favor.", ja: "紅茶を1つお願いします" }
+        ] },
+      { bot: { es: "Muy bien. ¿Algo más?", ja: "かしこまりました。他には？" },
+        choices: [
+          { es: "No, gracias.", ja: "いいえ、結構です" },
+          { es: "Sí, un pan, por favor.", ja: "はい、パンを1つお願いします" }
+        ] },
+      { bot: { es: "Son tres euros.", ja: "3ユーロです" },
+        choices: [
+          { es: "Aquí tiene.", ja: "はい、どうぞ" }
+        ] },
+      { bot: { es: "¡Gracias! Que tenga un buen día.", ja: "ありがとう！良い一日を" },
+        choices: [
+          { es: "¡Igualmente!", ja: "あなたもね！" }
+        ] }
+    ],
+    end: { es: "¡Muy bien! Nivel 2 completado.", ja: "すばらしい！レベル2クリア🎉 カフェで注文できました" }
+  },
+  {
+    name: "レベル3：昨日と明日の話",
+    desc: "過去形・未来形にチャレンジ",
+    script: [
+      { bot: { es: "¿Qué hiciste ayer?", ja: "昨日は何をしたの？" },
+        choices: [
+          { es: "Ayer trabajé mucho.", ja: "昨日はたくさん働きました" },
+          { es: "Ayer escuché música.", ja: "昨日は音楽を聴きました" }
+        ] },
+      { bot: { es: "¡Qué bien! ¿Y qué vas a hacer mañana?", ja: "いいね！で、明日は何をする予定？" },
+        choices: [
+          { es: "Voy a estudiar español.", ja: "スペイン語を勉強するつもりです" },
+          { es: "Voy a ver a mi familia.", ja: "家族に会う予定です" }
+        ] },
+      { bot: { es: "¡Buen plan! ¿Fuiste a España alguna vez?", ja: "いい計画！スペインに行ったことある？" },
+        choices: [
+          { es: "No, pero quiero ir.", ja: "ないけど、行きたいです" },
+          { es: "Sí, fui una vez.", ja: "はい、一度行きました" }
+        ] },
+      { bot: { es: "Seguro que irás pronto. ¡Ánimo!", ja: "きっとすぐ行けるよ。がんばって！" },
+        choices: [
+          { es: "Gracias. ¡Hasta pronto!", ja: "ありがとう。また近いうちに！" }
+        ] }
+    ],
+    end: { es: "¡Excelente! Nivel 3 completado.", ja: "エクセレンテ！レベル3クリア🎉 過去と未来が言えました" }
+  },
+  {
+    name: "レベル4：自分の意見",
+    desc: "好き・思う・理由を伝える",
+    script: [
+      { bot: { es: "¿Qué te parece la música española?", ja: "スペインの音楽ってどう思う？" },
+        choices: [
+          { es: "Me encanta. Es muy alegre.", ja: "大好き。とても陽気だから" },
+          { es: "Creo que es interesante.", ja: "面白いと思います" }
+        ] },
+      { bot: { es: "¿Prefieres el mar o la montaña?", ja: "海と山、どっちが好き？" },
+        choices: [
+          { es: "Prefiero el mar.", ja: "海の方が好きです" },
+          { es: "Prefiero la montaña.", ja: "山の方が好きです" }
+        ] },
+      { bot: { es: "¿Por qué estudias español?", ja: "どうしてスペイン語を勉強してるの？" },
+        choices: [
+          { es: "Porque quiero viajar a España.", ja: "スペインを旅行したいからです" },
+          { es: "Porque me gusta aprender.", ja: "学ぶことが好きだからです" }
+        ] },
+      { bot: { es: "¡Es una razón estupenda!", ja: "すてきな理由だね！" },
+        choices: [
+          { es: "Gracias. Pienso lo mismo.", ja: "ありがとう。私もそう思います" }
+        ] }
+    ],
+    end: { es: "¡Genial! Nivel 4 completado.", ja: "最高！レベル4クリア🎉 自分の意見が言えました" }
+  },
+  {
+    name: "レベル5：文化の話",
+    desc: "スペインの建築・食・暮らしを語る",
+    script: [
+      { bot: { es: "¿Conoces la Sagrada Familia?", ja: "サグラダファミリアって知ってる？" },
+        choices: [
+          { es: "Sí, es la obra de Gaudí.", ja: "はい、ガウディの作品ですね" },
+          { es: "He oído que es impresionante.", ja: "すごいって聞いたことがあります" }
+        ] },
+      { bot: { es: "En España, la cena es muy tarde, ¿sabías?", ja: "スペインでは夕食がすごく遅いんだよ、知ってた？" },
+        choices: [
+          { es: "Sí, a las nueve o diez, ¿verdad?", ja: "はい、9時か10時ですよね？" },
+          { es: "¡Qué sorpresa! En Japón cenamos antes.", ja: "びっくり！日本ではもっと早く食べます" }
+        ] },
+      { bot: { es: "¿Qué comida española te gustaría probar?", ja: "どんなスペイン料理を食べてみたい？" },
+        choices: [
+          { es: "La paella, por supuesto.", ja: "もちろんパエリアです" },
+          { es: "Las tapas con amigos.", ja: "友達と一緒にタパスを" }
+        ] },
+      { bot: { es: "¡Buen provecho! Algún día comeremos juntos en España.", ja: "召し上がれ！いつかスペインで一緒に食べようね" },
+        choices: [
+          { es: "¡Ojalá! Hasta la próxima.", ja: "そうなるといいな！また次回" }
+        ] }
+    ],
+    end: { es: "¡Fantástico! Nivel 5 completado.", ja: "ファンタスティコ！レベル5クリア🎉 もう文化まで語れます" }
+  }
+];
+
+let talkLevel = 0;
+let talkStep = 0;
+
+function showTalkLevels() {
+  document.getElementById("talkLevelSelect").classList.remove("hidden");
+  document.getElementById("talkPlay").classList.add("hidden");
+  const box = document.getElementById("talkLevelSelect");
+  box.innerHTML = "";
+  TALK_LEVELS.forEach((lv, i) => {
+    const btn = document.createElement("button");
+    btn.innerHTML = "💬 " + lv.name + "<small>" + lv.desc + "</small>";
+    btn.onclick = () => startTalk(i);
+    box.appendChild(btn);
+  });
+}
+
+function startTalk(i) {
+  talkLevel = i;
+  talkStep = 0;
+  document.getElementById("talkLevelSelect").classList.add("hidden");
+  document.getElementById("talkPlay").classList.remove("hidden");
+  document.getElementById("chatBox").innerHTML = "";
+  document.getElementById("talkFeedback").textContent = "";
+  botSay(TALK_LEVELS[i].script[0].bot);
+  renderTalkChoices();
+}
+
+function botSay(line) {
+  const box = document.getElementById("chatBox");
+  const b = document.createElement("div");
+  b.className = "bubble bot";
+  const sp = document.createElement("button");
+  sp.className = "bubble-speak";
+  sp.textContent = "🔊";
+  sp.onclick = () => speak(line.es);
+  b.appendChild(document.createTextNode(line.es + " "));
+  b.appendChild(sp);
+  const ja = document.createElement("span");
+  ja.className = "ja-sub";
+  ja.textContent = line.ja;
+  b.appendChild(ja);
+  box.appendChild(b);
+  box.scrollTop = box.scrollHeight;
+  speak(line.es);
+}
+
+function userSay(line) {
+  const box = document.getElementById("chatBox");
+  const b = document.createElement("div");
+  b.className = "bubble user";
+  b.textContent = line.es;
+  const ja = document.createElement("span");
+  ja.className = "ja-sub";
+  ja.textContent = line.ja;
+  b.appendChild(ja);
+  box.appendChild(b);
+  box.scrollTop = box.scrollHeight;
+}
+
+function renderTalkChoices() {
+  const step = TALK_LEVELS[talkLevel].script[talkStep];
+  const box = document.getElementById("talkChoices");
+  box.innerHTML = "";
+  step.choices.forEach(c => {
+    const btn = document.createElement("button");
+    btn.innerHTML = c.es + "<small>" + c.ja + "</small>";
+    btn.onclick = () => chooseTalkReply(c);
+    box.appendChild(btn);
+  });
+}
+
+function chooseTalkReply(c) {
+  userSay(c);
+  document.getElementById("talkFeedback").textContent = "";
+  talkStep++;
+  const lv = TALK_LEVELS[talkLevel];
+  if (talkStep < lv.script.length) {
+    setTimeout(() => {
+      botSay(lv.script[talkStep].bot);
+      renderTalkChoices();
+    }, 700);
+  } else {
+    document.getElementById("talkChoices").innerHTML = "";
+    setTimeout(() => botSay(lv.end), 700);
+  }
+}
+
+// マイクで選択肢を答える（一番近い選択肢を採用）
+function talkListenChoice() {
+  const fb = document.getElementById("talkFeedback");
+  const lv = TALK_LEVELS[talkLevel];
+  if (talkStep >= lv.script.length) return;
+  if (!SR) {
+    fb.textContent = "このブラウザはマイク非対応です。スマホのChromeでどうぞ";
+    return;
+  }
+  if (location.protocol === "file:") {
+    fb.textContent = "マイクはネット公開版（https）で使えます";
+    return;
+  }
+  const choices = lv.script[talkStep].choices;
+  const r = new SR();
+  r.lang = "es-ES";
+  r.maxAlternatives = 3;
+  fb.textContent = "👂 聞いてます…選択肢のどれかを言ってみて！";
+  fb.style.color = "var(--yellow)";
+  r.onresult = (e) => {
+    let bestChoice = null, bestScore = 0, heard = "";
+    for (const alt of e.results[0]) {
+      choices.forEach(c => {
+        const s = similarity(normalizeEs(alt.transcript), normalizeEs(c.es));
+        if (s > bestScore) { bestScore = s; bestChoice = c; heard = alt.transcript; }
+      });
+    }
+    if (bestScore >= 0.5 && bestChoice) {
+      fb.textContent = "⭕ 聞き取れました！（" + heard + "）";
+      fb.style.color = "var(--ok)";
+      chooseTalkReply(bestChoice);
+    } else {
+      fb.textContent = "❌ うまく聞き取れませんでした（聞こえた言葉：" + (heard || "なし") + "）\nもう一回どうぞ！";
+      fb.style.color = "var(--ng)";
+    }
+  };
+  r.onerror = (e) => {
+    fb.textContent = e.error === "not-allowed" ? "マイクの使用を「許可」してください" : "マイクでエラー（" + e.error + "）";
+    fb.style.color = "var(--ng)";
+  };
+  r.start();
+}
+
 // ===== タブ切り替え =====
 function switchTab(tab) {
-  document.getElementById("screenCards").classList.toggle("active", tab === "cards");
-  document.getElementById("screenQuiz").classList.toggle("active", tab === "quiz");
-  document.getElementById("tabCards").classList.toggle("active", tab === "cards");
-  document.getElementById("tabQuiz").classList.toggle("active", tab === "quiz");
+  const tabs = { cards: "Cards", quiz: "Quiz", grammar: "Grammar", talk: "Talk" };
+  for (const key in tabs) {
+    document.getElementById("screen" + tabs[key]).classList.toggle("active", tab === key);
+    document.getElementById("tab" + tabs[key]).classList.toggle("active", tab === key);
+  }
   if (tab === "quiz") startQuiz();
+  if (tab === "talk") showTalkLevels();
 }
 
 // 初期表示
