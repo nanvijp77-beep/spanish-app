@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>スペイン語学習アプリ</title>
+<style>
+  :root {
+    --main: #e63946;
+    --yellow: #f4a629;
+    --bg: #fdf6ec;
+    --card: #ffffff;
+    --text: #333333;
+    --ok: #2a9d8f;
+    --ng: #e76f51;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  header {
+    width: 100%;
+    background: linear-gradient(135deg, var(--main), var(--yellow));
+    color: #fff;
+    text-align: center;
+    padding: 16px 8px;
+  }
+  header h1 { font-size: 1.3rem; }
+  header p { font-size: 0.8rem; opacity: 0.9; margin-top: 4px; }
+
+  nav {
+    display: flex;
+    gap: 8px;
+    margin: 16px 0;
+  }
+  nav button {
+    padding: 10px 20px;
+    border: 2px solid var(--main);
+    border-radius: 24px;
+    background: #fff;
+    color: var(--main);
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  nav button.active {
+    background: var(--main);
+    color: #fff;
+  }
+
+  .voice-settings {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+    font-size: 0.85rem;
+  }
+  .voice-settings select {
+    padding: 6px 8px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    max-width: 220px;
+  }
+  .voice-settings .try-btn {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 8px;
+    background: var(--yellow);
+    color: #fff;
+    font-weight: bold;
+    cursor: pointer;
+  }
+
+  main {
+    width: 100%;
+    max-width: 480px;
+    padding: 0 16px 32px;
+    flex: 1;
+  }
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* ===== 単語カード ===== */
+  .category-select {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .category-select button {
+    padding: 6px 12px;
+    border: 1px solid var(--yellow);
+    border-radius: 16px;
+    background: #fff;
+    color: #b07600;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .category-select button.active {
+    background: var(--yellow);
+    color: #fff;
+    font-weight: bold;
+  }
+
+  .flip-card {
+    perspective: 1000px;
+    width: 100%;
+    height: 240px;
+    cursor: pointer;
+  }
+  .flip-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.5s;
+    transform-style: preserve-3d;
+  }
+  .flip-card.flipped .flip-inner { transform: rotateY(180deg); }
+  .flip-face {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    padding: 16px;
+  }
+  .flip-front {
+    background: var(--card);
+    border: 3px solid var(--main);
+  }
+  .flip-back {
+    background: var(--main);
+    color: #fff;
+    transform: rotateY(180deg);
+  }
+  .flip-front .word { font-size: 2.2rem; font-weight: bold; color: var(--main); text-align: center; }
+  .flip-back .word { font-size: 2rem; font-weight: bold; text-align: center; }
+  .flip-face .hint { font-size: 0.8rem; opacity: 0.6; }
+  .flip-back .reading { font-size: 1rem; opacity: 0.9; }
+
+  .speak-btn {
+    border: none;
+    background: var(--yellow);
+    color: #fff;
+    font-size: 1.3rem;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  }
+  .speak-btn:active { transform: scale(0.92); }
+
+  .card-btns { display: flex; gap: 12px; }
+  .mic-btn {
+    border: none;
+    background: var(--ok);
+    color: #fff;
+    font-size: 1.3rem;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  }
+  .mic-btn:active { transform: scale(0.92); }
+  .mic-btn.listening {
+    background: var(--ng);
+    animation: pulse 1s infinite;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(231,111,81,0.5); }
+    100% { box-shadow: 0 0 0 14px rgba(231,111,81,0); }
+  }
+  .pron-feedback {
+    min-height: 48px;
+    margin-top: 12px;
+    text-align: center;
+    font-size: 1rem;
+    font-weight: bold;
+    white-space: pre-line;
+  }
+
+  .card-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 16px;
+  }
+  .card-nav button {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 12px;
+    background: var(--yellow);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  .card-nav button:disabled { opacity: 0.4; }
+  .card-counter { font-size: 0.95rem; color: #888; }
+
+  /* ===== クイズ ===== */
+  .quiz-question {
+    background: var(--card);
+    border: 3px solid var(--yellow);
+    border-radius: 16px;
+    padding: 24px 16px;
+    text-align: center;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  }
+  .quiz-question .label { font-size: 0.85rem; color: #888; margin-bottom: 8px; }
+  .quiz-question .word { font-size: 2rem; font-weight: bold; color: var(--main); }
+  .quiz-progress { text-align: center; font-size: 0.9rem; color: #888; margin-bottom: 8px; }
+
+  .choices { display: flex; flex-direction: column; gap: 10px; }
+  .choices button {
+    padding: 14px;
+    border: 2px solid #ddd;
+    border-radius: 12px;
+    background: #fff;
+    font-size: 1.05rem;
+    cursor: pointer;
+    text-align: center;
+  }
+  .choices button.correct { background: var(--ok); border-color: var(--ok); color: #fff; font-weight: bold; }
+  .choices button.wrong { background: var(--ng); border-color: var(--ng); color: #fff; }
+  .choices button:disabled { cursor: default; }
+
+  .quiz-feedback {
+    text-align: center;
+    font-size: 1.2rem;
+    font-weight: bold;
+    min-height: 32px;
+    margin-top: 12px;
+  }
+  .quiz-next {
+    display: block;
+    margin: 12px auto 0;
+    padding: 12px 32px;
+    border: none;
+    border-radius: 12px;
+    background: var(--main);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  .hidden { display: none !important; }
+
+  .quiz-result {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 32px 16px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  }
+  .quiz-result .score { font-size: 2.4rem; font-weight: bold; color: var(--main); margin: 12px 0; }
+  .quiz-result .message { font-size: 1.05rem; margin-bottom: 20px; }
+
+  footer {
+    width: 100%;
+    text-align: center;
+    padding: 12px;
+    font-size: 0.75rem;
+    color: #aaa;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🇪🇸 スペイン語学習アプリ</h1>
+  <p>¡Vamos! 毎日1ミリずつ</p>
+</header>
+
+<nav>
+  <button id="tabCards" class="active" onclick="switchTab('cards')">📖 単語カード</button>
+  <button id="tabQuiz" onclick="switchTab('quiz')">✏️ クイズ</button>
+</nav>
+
+<main>
+  <!-- 音声設定（声えらび） -->
+  <div class="voice-settings">
+    <span>🗣️声：</span>
+    <select id="voiceSelect"></select>
+    <select id="rateSelect">
+      <option value="0.7">ゆっくり</option>
+      <option value="0.9" selected>ふつう</option>
+      <option value="1.1">はやい</option>
+    </select>
+    <button class="try-btn" onclick="speak('Hola, buenos días')">試し聞き</button>
+  </div>
+
+  <!-- 単語カード画面 -->
+  <section id="screenCards" class="screen active">
+    <div class="category-select" id="categorySelect"></div>
+    <div class="flip-card" id="flipCard" onclick="flipCard()">
+      <div class="flip-inner">
+        <div class="flip-face flip-front">
+          <div class="word" id="cardFront"></div>
+          <div class="card-btns">
+            <button class="speak-btn" onclick="event.stopPropagation(); speakCurrentCard()">🔊</button>
+            <button class="mic-btn" id="micBtn" onclick="event.stopPropagation(); startPronunciationCheck()">🎤</button>
+          </div>
+          <div class="hint">🔊聞く／🎤発音チェック／カードタップで日本語</div>
+        </div>
+        <div class="flip-face flip-back">
+          <div class="word" id="cardBack"></div>
+          <div class="reading" id="cardReading"></div>
+          <button class="speak-btn" onclick="event.stopPropagation(); speakCurrentCard()">🔊</button>
+          <div class="hint">タップで戻る</div>
+        </div>
+      </div>
+    </div>
+    <div class="pron-feedback" id="pronFeedback"></div>
+    <div class="card-nav">
+      <button id="btnPrev" onclick="moveCard(-1)">← 前へ</button>
+      <span class="card-counter" id="cardCounter"></span>
+      <button id="btnNext" onclick="moveCard(1)">次へ →</button>
+    </div>
+  </section>
+
+  <!-- クイズ画面 -->
+  <section id="screenQuiz" class="screen">
+    <div id="quizPlay">
+      <div class="quiz-progress" id="quizProgress"></div>
+      <div class="quiz-question">
+        <div class="label">この単語の意味は？</div>
+        <div class="word" id="quizWord"></div>
+        <button class="speak-btn" style="margin-top:10px" onclick="speakQuizWord()">🔊</button>
+      </div>
+      <div class="choices" id="quizChoices"></div>
+      <div class="quiz-feedback" id="quizFeedback"></div>
+      <button class="quiz-next hidden" id="btnQuizNext" onclick="nextQuestion()">次の問題 →</button>
+    </div>
+    <div id="quizResultBox" class="quiz-result hidden">
+      <div>クイズ結果</div>
+      <div class="score" id="quizScore"></div>
+      <div class="message" id="quizMessage"></div>
+      <button class="quiz-next" onclick="startQuiz()">もう一回チャレンジ</button>
+    </div>
+  </section>
+</main>
+
+<footer>フェーズ2試作版 — 単語カード＆クイズ＆発音（🔊聞く・🎤チェック）</footer>
+
+<script>
+// ===== 単語データ（スペイン語 / 読みガナ / 日本語 / カテゴリ） =====
+const WORDS = [
+  // あいさつ
+  { es: "Hola", yomi: "オラ", ja: "こんにちは", cat: "あいさつ" },
+  { es: "Buenos días", yomi: "ブエノス ディアス", ja: "おはよう", cat: "あいさつ" },
+  { es: "Buenas noches", yomi: "ブエナス ノチェス", ja: "こんばんは／おやすみ", cat: "あいさつ" },
+  { es: "Gracias", yomi: "グラシアス", ja: "ありがとう", cat: "あいさつ" },
+  { es: "Por favor", yomi: "ポル ファボール", ja: "お願いします", cat: "あいさつ" },
+  { es: "Adiós", yomi: "アディオス", ja: "さようなら", cat: "あいさつ" },
+  { es: "Perdón", yomi: "ペルドン", ja: "ごめんなさい", cat: "あいさつ" },
+  { es: "¿Qué tal?", yomi: "ケ タル", ja: "調子はどう？", cat: "あいさつ" },
+  { es: "Mucho gusto", yomi: "ムチョ グスト", ja: "はじめまして", cat: "あいさつ" },
+  { es: "De nada", yomi: "デ ナダ", ja: "どういたしまして", cat: "あいさつ" },
+  // 数字
+  { es: "uno", yomi: "ウノ", ja: "1", cat: "数字" },
+  { es: "dos", yomi: "ドス", ja: "2", cat: "数字" },
+  { es: "tres", yomi: "トレス", ja: "3", cat: "数字" },
+  { es: "cuatro", yomi: "クアトロ", ja: "4", cat: "数字" },
+  { es: "cinco", yomi: "シンコ", ja: "5", cat: "数字" },
+  { es: "seis", yomi: "セイス", ja: "6", cat: "数字" },
+  { es: "siete", yomi: "シエテ", ja: "7", cat: "数字" },
+  { es: "ocho", yomi: "オチョ", ja: "8", cat: "数字" },
+  { es: "nueve", yomi: "ヌエベ", ja: "9", cat: "数字" },
+  { es: "diez", yomi: "ディエス", ja: "10", cat: "数字" },
+  // 食べ物
+  { es: "agua", yomi: "アグア", ja: "水", cat: "食べ物" },
+  { es: "pan", yomi: "パン", ja: "パン", cat: "食べ物" },
+  { es: "café", yomi: "カフェ", ja: "コーヒー", cat: "食べ物" },
+  { es: "leche", yomi: "レチェ", ja: "牛乳", cat: "食べ物" },
+  { es: "vino", yomi: "ビノ", ja: "ワイン", cat: "食べ物" },
+  { es: "paella", yomi: "パエジャ", ja: "パエリア", cat: "食べ物" },
+  { es: "manzana", yomi: "マンサナ", ja: "りんご", cat: "食べ物" },
+  { es: "pescado", yomi: "ペスカド", ja: "魚", cat: "食べ物" },
+  { es: "carne", yomi: "カルネ", ja: "肉", cat: "食べ物" },
+  { es: "queso", yomi: "ケソ", ja: "チーズ", cat: "食べ物" },
+  // 日常
+  { es: "casa", yomi: "カサ", ja: "家", cat: "日常" },
+  { es: "familia", yomi: "ファミリア", ja: "家族", cat: "日常" },
+  { es: "amigo", yomi: "アミーゴ", ja: "友達", cat: "日常" },
+  { es: "tiempo", yomi: "ティエンポ", ja: "時間／天気", cat: "日常" },
+  { es: "hoy", yomi: "オイ", ja: "今日", cat: "日常" },
+  { es: "mañana", yomi: "マニャーナ", ja: "明日／朝", cat: "日常" },
+  { es: "trabajo", yomi: "トラバホ", ja: "仕事", cat: "日常" },
+  { es: "música", yomi: "ムシカ", ja: "音楽", cat: "日常" },
+  { es: "sol", yomi: "ソル", ja: "太陽", cat: "日常" },
+  { es: "corazón", yomi: "コラソン", ja: "心", cat: "日常" },
+];
+
+const CATEGORIES = ["すべて", "あいさつ", "数字", "食べ物", "日常"];
+
+// ===== 単語カード =====
+let currentCategory = "すべて";
+let cardList = [];
+let cardIndex = 0;
+
+function getWordsByCategory(cat) {
+  return cat === "すべて" ? WORDS : WORDS.filter(w => w.cat === cat);
+}
+
+function renderCategoryButtons() {
+  const box = document.getElementById("categorySelect");
+  box.innerHTML = "";
+  CATEGORIES.forEach(cat => {
+    const btn = document.createElement("button");
+    btn.textContent = cat;
+    if (cat === currentCategory) btn.classList.add("active");
+    btn.onclick = () => {
+      currentCategory = cat;
+      cardIndex = 0;
+      renderCategoryButtons();
+      renderCard();
+    };
+    box.appendChild(btn);
+  });
+}
+
+function renderCard() {
+  cardList = getWordsByCategory(currentCategory);
+  const w = cardList[cardIndex];
+  const card = document.getElementById("flipCard");
+  card.classList.remove("flipped");
+  // めくりアニメーション中に裏面の文字が変わらないよう少し待ってから更新
+  setTimeout(() => {
+    document.getElementById("cardFront").textContent = w.es;
+    document.getElementById("cardBack").textContent = w.ja;
+    document.getElementById("cardReading").textContent = "読み：" + w.yomi;
+  }, 120);
+  document.getElementById("cardCounter").textContent = (cardIndex + 1) + " / " + cardList.length;
+  document.getElementById("btnPrev").disabled = cardIndex === 0;
+  document.getElementById("btnNext").disabled = cardIndex === cardList.length - 1;
+}
+
+function flipCard() {
+  document.getElementById("flipCard").classList.toggle("flipped");
+}
+
+function moveCard(dir) {
+  const next = cardIndex + dir;
+  if (next < 0 || next >= cardList.length) return;
+  cardIndex = next;
+  document.getElementById("pronFeedback").textContent = "";
+  renderCard();
+}
+
+// ===== クイズ（4択・10問） =====
+const QUIZ_COUNT = 10;
+let quizSet = [];
+let quizIndex = 0;
+let quizScore = 0;
+
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function startQuiz() {
+  quizSet = shuffle(WORDS).slice(0, QUIZ_COUNT);
+  quizIndex = 0;
+  quizScore = 0;
+  document.getElementById("quizResultBox").classList.add("hidden");
+  document.getElementById("quizPlay").classList.remove("hidden");
+  renderQuestion();
+}
+
+function renderQuestion() {
+  const q = quizSet[quizIndex];
+  document.getElementById("quizProgress").textContent =
+    "第" + (quizIndex + 1) + "問 / 全" + QUIZ_COUNT + "問　（正解 " + quizScore + "）";
+  document.getElementById("quizWord").textContent = q.es;
+  document.getElementById("quizFeedback").textContent = "";
+  document.getElementById("btnQuizNext").classList.add("hidden");
+
+  // 正解1つ＋不正解3つ
+  const wrongs = shuffle(WORDS.filter(w => w.ja !== q.ja)).slice(0, 3);
+  const choices = shuffle([q, ...wrongs]);
+
+  const box = document.getElementById("quizChoices");
+  box.innerHTML = "";
+  choices.forEach(c => {
+    const btn = document.createElement("button");
+    btn.textContent = c.ja;
+    btn.onclick = () => answer(btn, c, q);
+    box.appendChild(btn);
+  });
+}
+
+function answer(btn, chosen, q) {
+  const buttons = document.querySelectorAll("#quizChoices button");
+  buttons.forEach(b => {
+    b.disabled = true;
+    if (b.textContent === q.ja) b.classList.add("correct");
+  });
+  const fb = document.getElementById("quizFeedback");
+  if (chosen.ja === q.ja) {
+    quizScore++;
+    fb.textContent = "⭕ 正解！ " + q.es + "（" + q.yomi + "）";
+    fb.style.color = "var(--ok)";
+  } else {
+    btn.classList.add("wrong");
+    fb.textContent = "❌ 正解は「" + q.ja + "」（" + q.yomi + "）";
+    fb.style.color = "var(--ng)";
+  }
+  document.getElementById("btnQuizNext").classList.remove("hidden");
+  if (quizIndex === QUIZ_COUNT - 1) {
+    document.getElementById("btnQuizNext").textContent = "結果を見る →";
+  } else {
+    document.getElementById("btnQuizNext").textContent = "次の問題 →";
+  }
+}
+
+function nextQuestion() {
+  if (quizIndex === QUIZ_COUNT - 1) {
+    showResult();
+    return;
+  }
+  quizIndex++;
+  renderQuestion();
+}
+
+function showResult() {
+  document.getElementById("quizPlay").classList.add("hidden");
+  const box = document.getElementById("quizResultBox");
+  box.classList.remove("hidden");
+  document.getElementById("quizScore").textContent = quizScore + " / " + QUIZ_COUNT;
+  let msg;
+  if (quizScore === QUIZ_COUNT) msg = "¡Perfecto!（完璧！）すごい！";
+  else if (quizScore >= 7) msg = "¡Muy bien!（とてもいい！）その調子！";
+  else if (quizScore >= 4) msg = "¡Bien!（いいね！）60点でOK、続けるのが大事！";
+  else msg = "今日の1ミリ、ちゃんと前進してます。カードで復習してもう一回！";
+  document.getElementById("quizMessage").textContent = msg;
+}
+
+// ===== 発音を聞く（音声合成） =====
+// スペイン語の声を全部リストに出して、社長が選べるようにする
+let spanishVoices = [];
+
+function loadVoiceList() {
+  spanishVoices = speechSynthesis.getVoices().filter(v => v.lang.startsWith("es"));
+  const sel = document.getElementById("voiceSelect");
+  sel.innerHTML = "";
+  if (spanishVoices.length === 0) {
+    const opt = document.createElement("option");
+    opt.textContent = "スペイン語の声が見つかりません";
+    sel.appendChild(opt);
+    return;
+  }
+  spanishVoices.forEach((v, i) => {
+    const opt = document.createElement("option");
+    opt.value = i;
+    // 名前を短く表示（Microsoft/Googleなどの長い部分を整理）
+    opt.textContent = v.name.replace("Microsoft ", "").replace(" - Spanish", "").replace("Google ", "Google ");
+    sel.appendChild(opt);
+  });
+  // 前回選んだ声を覚えておく
+  const saved = localStorage.getItem("spanishVoiceName");
+  const savedIndex = spanishVoices.findIndex(v => v.name === saved);
+  sel.value = savedIndex >= 0 ? savedIndex : 0;
+}
+
+function speak(text) {
+  if (!("speechSynthesis" in window)) {
+    alert("このブラウザは音声に対応していません");
+    return;
+  }
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "es-ES";
+  u.rate = parseFloat(document.getElementById("rateSelect").value);
+  const sel = document.getElementById("voiceSelect");
+  const voice = spanishVoices[parseInt(sel.value)];
+  if (voice) {
+    u.voice = voice;
+    localStorage.setItem("spanishVoiceName", voice.name);
+  }
+  speechSynthesis.speak(u);
+}
+
+function speakCurrentCard() {
+  speak(cardList[cardIndex].es);
+}
+
+function speakQuizWord() {
+  speak(quizSet[quizIndex].es);
+}
+
+// 声リストを読み込む（ブラウザによっては少し遅れて届くので両方で対応）
+if ("speechSynthesis" in window) {
+  loadVoiceList();
+  speechSynthesis.onvoiceschanged = loadVoiceList;
+}
+
+// ===== 発音チェック（音声認識・マイク） =====
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recog = null;
+
+// 判定用にそろえる：小文字化・記号除去・アクセント記号は無視（発音チェックには十分）
+function normalizeEs(s) {
+  return s.toLowerCase()
+    .replace(/[¿?¡!.,、。]/g, "")
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// 2つの文字列の近さを0〜1で出す（レーベンシュタイン距離）
+function levenshtein(a, b) {
+  const m = [];
+  for (let i = 0; i <= b.length; i++) m[i] = [i];
+  for (let j = 0; j <= a.length; j++) m[0][j] = j;
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      m[i][j] = Math.min(
+        m[i - 1][j] + 1,
+        m[i][j - 1] + 1,
+        m[i - 1][j - 1] + (b[i - 1] === a[j - 1] ? 0 : 1)
+      );
+    }
+  }
+  return m[b.length][a.length];
+}
+function similarity(a, b) {
+  if (!a.length && !b.length) return 1;
+  return 1 - levenshtein(a, b) / Math.max(a.length, b.length);
+}
+
+function setPronFeedback(text, color) {
+  const fb = document.getElementById("pronFeedback");
+  fb.textContent = text;
+  fb.style.color = color || "var(--text)";
+}
+
+function startPronunciationCheck() {
+  if (!SR) {
+    setPronFeedback("このブラウザはマイク非対応です。\nスマホのChromeで試してください", "var(--ng)");
+    return;
+  }
+  if (location.protocol === "file:") {
+    setPronFeedback("マイクはネット公開版（https）でのみ使えます。\nスマホでURLを開いて試してください", "var(--ng)");
+    return;
+  }
+  const target = cardList[cardIndex].es;
+  const micBtn = document.getElementById("micBtn");
+
+  recog = new SR();
+  recog.lang = "es-ES";
+  recog.interimResults = false;
+  recog.maxAlternatives = 3;
+
+  micBtn.classList.add("listening");
+  setPronFeedback("👂 聞いてます… 「" + target + "」と言ってみて！", "var(--yellow)");
+
+  recog.onresult = (e) => {
+    // 候補の中で一番近いものを採用（聞き取りブレの救済）
+    let best = "", bestScore = 0;
+    for (const alt of e.results[0]) {
+      const score = similarity(normalizeEs(alt.transcript), normalizeEs(target));
+      if (score > bestScore) { bestScore = score; best = alt.transcript; }
+    }
+    if (bestScore >= 0.85) {
+      setPronFeedback("⭕ ¡Perfecto! 完璧な発音です！\n（聞こえた言葉：" + best + "）", "var(--ok)");
+    } else if (bestScore >= 0.6) {
+      setPronFeedback("🔶 おしい！もう一回！\n（聞こえた言葉：" + best + "）", "var(--yellow)");
+    } else {
+      setPronFeedback("❌ うまく聞き取れませんでした\n（聞こえた言葉：" + (best || "なし") + "）\n🔊でお手本を聞いてもう一回！", "var(--ng)");
+    }
+  };
+  recog.onerror = (e) => {
+    if (e.error === "not-allowed") {
+      setPronFeedback("マイクの使用が許可されていません。\nブラウザの「許可」を押してください", "var(--ng)");
+    } else if (e.error === "no-speech") {
+      setPronFeedback("声が聞こえませんでした。もう一回🎤を押して話してみて", "var(--ng)");
+    } else {
+      setPronFeedback("マイクでエラーが起きました（" + e.error + "）", "var(--ng)");
+    }
+  };
+  recog.onend = () => micBtn.classList.remove("listening");
+  recog.start();
+}
+
+// ===== タブ切り替え =====
+function switchTab(tab) {
+  document.getElementById("screenCards").classList.toggle("active", tab === "cards");
+  document.getElementById("screenQuiz").classList.toggle("active", tab === "quiz");
+  document.getElementById("tabCards").classList.toggle("active", tab === "cards");
+  document.getElementById("tabQuiz").classList.toggle("active", tab === "quiz");
+  if (tab === "quiz") startQuiz();
+}
+
+// 初期表示
+renderCategoryButtons();
+renderCard();
+</script>
+
+</body>
+</html>
