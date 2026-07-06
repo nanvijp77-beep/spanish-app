@@ -400,6 +400,68 @@
     cursor: pointer;
   }
   .talk-tools button.quit { background: #bbb; }
+  .talk-levels button:disabled { opacity: 0.45; cursor: default; }
+
+  /* ===== 街づくり ===== */
+  .city-status {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 14px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    margin-bottom: 12px;
+    text-align: center;
+  }
+  .city-status .lv { font-size: 1.2rem; font-weight: bold; color: var(--main); }
+  .city-status .task { font-size: 0.9rem; color: #666; margin-top: 4px; }
+  .brick-bar { height: 14px; background: #eee; border-radius: 7px; overflow: hidden; margin-top: 8px; }
+  .brick-bar div {
+    height: 100%;
+    background: linear-gradient(90deg, var(--yellow), var(--main));
+    border-radius: 7px;
+    transition: width 0.4s;
+  }
+  .brick-note { font-size: 0.75rem; color: #999; margin-top: 4px; }
+  .city-scroll {
+    overflow-x: auto;
+    background: #dceefb;
+    border-radius: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    margin-bottom: 12px;
+  }
+  .tier-info {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 0.85rem;
+    line-height: 1.8;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  }
+  .reset-btn {
+    border: none;
+    background: none;
+    color: #bbb;
+    text-decoration: underline;
+    cursor: pointer;
+    margin-top: 10px;
+    font-size: 0.8rem;
+  }
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    transform: translateX(-50%);
+    background: var(--main);
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 24px;
+    font-weight: bold;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+    z-index: 99;
+    transition: opacity 0.4s;
+    text-align: center;
+    max-width: 90%;
+    pointer-events: none;
+  }
 </style>
 </head>
 <body>
@@ -414,6 +476,7 @@
   <button id="tabQuiz" onclick="switchTab('quiz')">✏️ クイズ</button>
   <button id="tabGrammar" onclick="switchTab('grammar')">📚 文法</button>
   <button id="tabTalk" onclick="switchTab('talk')">💬 会話</button>
+  <button id="tabCity" onclick="switchTab('city')">🏙️ 街</button>
 </nav>
 
 <main>
@@ -545,9 +608,24 @@
       </div>
     </div>
   </section>
+
+  <!-- 街づくり画面 -->
+  <section id="screenCity" class="screen">
+    <div class="city-status">
+      <div class="lv" id="cityLevelText"></div>
+      <div class="task" id="cityTask"></div>
+      <div class="brick-bar"><div id="brickFill" style="width:0%"></div></div>
+      <div class="brick-note" id="brickNote"></div>
+    </div>
+    <div class="city-scroll"><svg id="citySvg" width="1560" height="320" viewBox="0 0 1560 320" xmlns="http://www.w3.org/2000/svg"></svg></div>
+    <div class="tier-info" id="tierInfo"></div>
+    <div style="text-align:center"><button class="reset-btn" onclick="resetCity()">記録をリセットする</button></div>
+  </section>
 </main>
 
-<footer>フェーズ3試作版 — 単語・クイズ・発音・文法・会話</footer>
+<div id="toast" class="toast" style="opacity:0"></div>
+
+<footer>フェーズ4 — 単語・クイズ・発音・文法・会話・街づくり🏙️</footer>
 
 <script>
 // ===== 単語データ（スペイン語 / 読みガナ / 日本語 / カテゴリ） =====
@@ -709,8 +787,9 @@ function answer(btn, chosen, q) {
   const fb = document.getElementById("quizFeedback");
   if (chosen.ja === q.ja) {
     quizScore++;
-    fb.textContent = "⭕ 正解！ " + q.es + "（" + q.yomi + "）";
+    fb.textContent = "⭕ 正解！ " + q.es + "（" + q.yomi + "）🧱+1";
     fb.style.color = "var(--ok)";
+    addBricks(1);
   } else {
     btn.classList.add("wrong");
     fb.textContent = "❌ 正解は「" + q.ja + "」（" + q.yomi + "）";
@@ -873,9 +952,11 @@ function startPronunciationCheck() {
       if (score > bestScore) { bestScore = score; best = alt.transcript; }
     }
     if (bestScore >= 0.85) {
-      setPronFeedback("⭕ ¡Perfecto! 完璧な発音です！\n（聞こえた言葉：" + best + "）", "var(--ok)");
+      setPronFeedback("⭕ ¡Perfecto! 完璧な発音です！🧱+2\n（聞こえた言葉：" + best + "）", "var(--ok)");
+      addBricks(2);
     } else if (bestScore >= 0.6) {
-      setPronFeedback("🔶 おしい！もう一回！\n（聞こえた言葉：" + best + "）", "var(--yellow)");
+      setPronFeedback("🔶 おしい！もう一回！🧱+1\n（聞こえた言葉：" + best + "）", "var(--yellow)");
+      addBricks(1);
     } else {
       setPronFeedback("❌ うまく聞き取れませんでした\n（聞こえた言葉：" + (best || "なし") + "）\n🔊でお手本を聞いてもう一回！", "var(--ng)");
     }
@@ -1035,8 +1116,13 @@ function showTalkLevels() {
   box.innerHTML = "";
   TALK_LEVELS.forEach((lv, i) => {
     const btn = document.createElement("button");
-    btn.innerHTML = "💬 " + lv.name + "<small>" + lv.desc + "</small>";
-    btn.onclick = () => startTalk(i);
+    if (city.level >= TIER_UNLOCK[i]) {
+      btn.innerHTML = "💬 " + lv.name + "<small>" + lv.desc + "</small>";
+      btn.onclick = () => startTalk(i);
+    } else {
+      btn.innerHTML = "🔒 " + lv.name + "<small>街レベル" + TIER_UNLOCK[i] + "で解放（🏙️街タブでれんがを貯めよう）</small>";
+      btn.disabled = true;
+    }
     box.appendChild(btn);
   });
 }
@@ -1119,7 +1205,10 @@ function chooseTalkReply(c) {
     }, 1800); // 自分のセリフの読み上げと重ならないよう少し待つ
   } else {
     document.getElementById("talkChoices").innerHTML = "";
-    setTimeout(() => botSay(lv.end), 1800);
+    setTimeout(() => {
+      botSay(lv.end);
+      if (!addBricks(5)) showToast("💬 会話クリア！ 🧱+5");
+    }, 1800);
   }
 }
 
@@ -1166,20 +1255,168 @@ function talkListenChoice() {
   r.start();
 }
 
+// ===== 街づくり（育成システム） =====
+const STAGE_NAMES = ["土台", "骨組み", "完成"];
+const LEVEL_COST = 10; // れんが10個で1レベル
+const TIER_UNLOCK = [0, 9, 18, 27, 36]; // 会話レベル解放に必要な街レベル
+
+const FOUNDATION = `<rect x="12" y="245" width="76" height="15" fill="#b0a08a"/><rect x="18" y="238" width="64" height="8" fill="#c4b498"/>`;
+
+const BUILDINGS = [
+  { name: "サグラダファミリア",
+    s2: `<rect x="24" y="200" width="52" height="60" fill="#c9b18f"/><rect x="26" y="110" width="12" height="100" fill="#c9b18f"/><rect x="44" y="90" width="12" height="120" fill="#c9b18f"/><rect x="62" y="110" width="12" height="100" fill="#c9b18f"/>`,
+    s3: `<polygon points="26,110 32,80 38,110" fill="#b09a76"/><polygon points="44,90 50,60 56,90" fill="#b09a76"/><polygon points="62,110 68,80 74,110" fill="#b09a76"/><circle cx="32" cy="78" r="3" fill="#e8c547"/><circle cx="50" cy="58" r="3" fill="#e8c547"/><circle cx="68" cy="78" r="3" fill="#e8c547"/><rect x="46" y="230" width="8" height="30" fill="#7a6a50"/><circle cx="50" cy="218" r="6" fill="#d4e6f7"/>` },
+  { name: "アルハンブラ宮殿",
+    s2: `<rect x="15" y="190" width="70" height="70" fill="#b5713f"/><rect x="20" y="150" width="22" height="45" fill="#a8632f"/>`,
+    s3: `<rect x="20" y="143" width="5" height="7" fill="#a8632f"/><rect x="29" y="143" width="5" height="7" fill="#a8632f"/><rect x="37" y="143" width="5" height="7" fill="#a8632f"/><rect x="48" y="183" width="6" height="7" fill="#b5713f"/><rect x="60" y="183" width="6" height="7" fill="#b5713f"/><rect x="72" y="183" width="6" height="7" fill="#b5713f"/><rect x="50" y="205" width="8" height="14" rx="4" fill="#5a3a20"/><rect x="64" y="205" width="8" height="14" rx="4" fill="#5a3a20"/><rect x="26" y="160" width="8" height="12" rx="4" fill="#5a3a20"/>` },
+  { name: "マドリード王宮",
+    s2: `<rect x="12" y="180" width="76" height="80" fill="#e0d6c2"/><rect x="12" y="170" width="76" height="10" fill="#cfc2a8"/>`,
+    s3: `<rect x="20" y="195" width="5" height="45" fill="#c5b89c"/><rect x="38" y="195" width="5" height="45" fill="#c5b89c"/><rect x="56" y="195" width="5" height="45" fill="#c5b89c"/><rect x="74" y="195" width="5" height="45" fill="#c5b89c"/><rect x="28" y="200" width="7" height="12" fill="#8a7a5f"/><rect x="46" y="200" width="7" height="12" fill="#8a7a5f"/><rect x="64" y="200" width="7" height="12" fill="#8a7a5f"/><rect x="47" y="140" width="2" height="30" fill="#888"/><rect x="49" y="140" width="13" height="8" fill="#c0392b"/>` },
+  { name: "ヒラルダの塔",
+    s2: `<rect x="38" y="100" width="24" height="160" fill="#d8a85c"/>`,
+    s3: `<rect x="34" y="80" width="32" height="22" fill="#c99648"/><polygon points="34,80 50,60 66,80" fill="#b8863c"/><circle cx="50" cy="55" r="4" fill="#e8c547"/><rect x="44" y="125" width="12" height="16" rx="6" fill="#7a5a2a"/><rect x="44" y="165" width="12" height="16" rx="6" fill="#7a5a2a"/><rect x="44" y="205" width="12" height="16" rx="6" fill="#7a5a2a"/>` },
+  { name: "メスキータ",
+    s2: `<rect x="12" y="205" width="76" height="55" fill="#e6d8b8"/><ellipse cx="50" cy="205" rx="16" ry="12" fill="#d8c49a"/>`,
+    s3: `<rect x="16" y="235" width="10" height="25" rx="5" fill="#b03a2e"/><rect x="30" y="235" width="10" height="25" rx="5" fill="#f5f0e6"/><rect x="44" y="235" width="10" height="25" rx="5" fill="#b03a2e"/><rect x="58" y="235" width="10" height="25" rx="5" fill="#f5f0e6"/><rect x="72" y="235" width="10" height="25" rx="5" fill="#b03a2e"/><circle cx="50" cy="192" r="4" fill="#e8c547"/>` },
+  { name: "グエル公園",
+    s2: `<path d="M10 260 Q30 235 50 250 Q70 265 90 245 L90 260 Z" fill="#d8c49a"/><rect x="35" y="200" width="30" height="45" fill="#e8d5b0"/>`,
+    s3: `<path d="M32 202 Q50 172 68 202 Z" fill="#c0632b"/><rect x="48" y="160" width="4" height="16" fill="#888"/><rect x="43" y="164" width="14" height="4" fill="#888"/><circle cx="22" cy="248" r="3" fill="#4a90d9"/><circle cx="34" cy="244" r="3" fill="#e8c547"/><circle cx="58" cy="252" r="3" fill="#2a9d8f"/><circle cx="74" cy="248" r="3" fill="#c0392b"/><rect x="44" y="222" width="12" height="14" rx="6" fill="#7a6a50"/>` },
+  { name: "トレド大聖堂",
+    s2: `<rect x="30" y="190" width="55" height="70" fill="#d0c0a0"/><rect x="14" y="120" width="20" height="140" fill="#c4b28e"/>`,
+    s3: `<polygon points="14,120 24,90 34,120" fill="#a89272"/><circle cx="24" cy="88" r="3" fill="#e8c547"/><circle cx="58" cy="215" r="9" fill="#4a6fa5"/><circle cx="58" cy="215" r="4" fill="#e8c547"/><rect x="52" y="238" width="12" height="22" rx="6" fill="#6a5a40"/>` },
+  { name: "サンティアゴ大聖堂",
+    s2: `<rect x="35" y="180" width="30" height="80" fill="#cfc0a2"/><rect x="16" y="130" width="16" height="130" fill="#c4b28e"/><rect x="68" y="130" width="16" height="130" fill="#c4b28e"/>`,
+    s3: `<polygon points="16,130 24,100 32,130" fill="#a89272"/><polygon points="68,130 76,100 84,130" fill="#a89272"/><polygon points="35,180 50,158 65,180" fill="#b8a682"/><rect x="48" y="146" width="4" height="12" fill="#888"/><rect x="44" y="150" width="12" height="4" fill="#888"/><rect x="44" y="230" width="12" height="30" rx="6" fill="#6a5a40"/>` },
+  { name: "グッゲンハイム美術館",
+    s2: `<ellipse cx="35" cy="235" rx="24" ry="25" fill="#b8c4cc"/><ellipse cx="62" cy="230" rx="20" ry="30" fill="#cdd6dc"/><rect x="20" y="240" width="65" height="20" fill="#a5b2ba"/>`,
+    s3: `<path d="M15 225 Q38 200 62 212" stroke="#e8eef2" stroke-width="4" fill="none"/><path d="M45 245 Q65 218 82 232" stroke="#dde5ea" stroke-width="3" fill="none"/><rect x="28" y="244" width="20" height="12" fill="#7ab8e8"/>` },
+  { name: "芸術科学都市",
+    s2: `<ellipse cx="50" cy="245" rx="35" ry="14" fill="#e8e4da"/><path d="M15 245 Q50 195 85 245" stroke="#dcd6c8" stroke-width="6" fill="none"/>`,
+    s3: `<ellipse cx="50" cy="243" rx="18" ry="8" fill="#4a90d9"/><circle cx="50" cy="243" r="5" fill="#2c5a8c"/><rect x="10" y="255" width="80" height="5" fill="#7ab8e8"/>` },
+  { name: "ローマ水道橋",
+    s2: `<rect x="8" y="180" width="84" height="80" fill="#c9b899"/><rect x="16" y="222" width="14" height="38" rx="7" fill="#dceefb"/><rect x="43" y="222" width="14" height="38" rx="7" fill="#dceefb"/><rect x="70" y="222" width="14" height="38" rx="7" fill="#dceefb"/>`,
+    s3: `<rect x="14" y="190" width="10" height="22" rx="5" fill="#dceefb"/><rect x="32" y="190" width="10" height="22" rx="5" fill="#dceefb"/><rect x="50" y="190" width="10" height="22" rx="5" fill="#dceefb"/><rect x="68" y="190" width="10" height="22" rx="5" fill="#dceefb"/><rect x="8" y="180" width="84" height="4" fill="#b0a080"/><rect x="8" y="216" width="84" height="3" fill="#b0a080"/>` },
+  { name: "アビラの城壁",
+    s2: `<rect x="8" y="210" width="84" height="50" fill="#cbb894"/><rect x="12" y="185" width="16" height="75" rx="8" fill="#bfa87f"/><rect x="42" y="185" width="16" height="75" rx="8" fill="#bfa87f"/><rect x="72" y="185" width="16" height="75" rx="8" fill="#bfa87f"/>`,
+    s3: `<rect x="14" y="180" width="4" height="6" fill="#bfa87f"/><rect x="22" y="180" width="4" height="6" fill="#bfa87f"/><rect x="44" y="180" width="4" height="6" fill="#bfa87f"/><rect x="52" y="180" width="4" height="6" fill="#bfa87f"/><rect x="74" y="180" width="4" height="6" fill="#bfa87f"/><rect x="82" y="180" width="4" height="6" fill="#bfa87f"/><rect x="30" y="204" width="5" height="6" fill="#cbb894"/><rect x="62" y="204" width="5" height="6" fill="#cbb894"/><rect x="46" y="235" width="12" height="25" rx="6" fill="#6a5a40"/>` },
+  { name: "カサ・バトリョ",
+    s2: `<rect x="22" y="170" width="56" height="90" fill="#dfe8f0"/>`,
+    s3: `<path d="M22 170 Q35 148 50 162 Q65 176 78 152 L78 170 Z" fill="#c0632b"/><ellipse cx="35" cy="205" rx="7" ry="5" fill="#f0f4f8" stroke="#9ab5c8"/><ellipse cx="60" cy="205" rx="7" ry="5" fill="#f0f4f8" stroke="#9ab5c8"/><ellipse cx="35" cy="230" rx="7" ry="5" fill="#f0f4f8" stroke="#9ab5c8"/><ellipse cx="60" cy="230" rx="7" ry="5" fill="#f0f4f8" stroke="#9ab5c8"/><circle cx="30" cy="185" r="3" fill="#4a90d9"/><circle cx="50" cy="180" r="3" fill="#2a9d8f"/><circle cx="68" cy="186" r="3" fill="#e8c547"/>` },
+  { name: "アルカサバ",
+    s2: `<polygon points="8,260 50,225 92,260" fill="#c8a878"/><rect x="20" y="215" width="60" height="25" fill="#b5905c"/>`,
+    s3: `<rect x="24" y="195" width="14" height="30" fill="#a8824e"/><rect x="62" y="195" width="14" height="30" fill="#a8824e"/><rect x="26" y="189" width="4" height="6" fill="#a8824e"/><rect x="33" y="189" width="4" height="6" fill="#a8824e"/><rect x="64" y="189" width="4" height="6" fill="#a8824e"/><rect x="71" y="189" width="4" height="6" fill="#a8824e"/><rect x="49" y="175" width="2" height="22" fill="#888"/><rect x="51" y="175" width="11" height="7" fill="#c0392b"/>` },
+  { name: "王立劇場",
+    s2: `<rect x="15" y="195" width="70" height="65" fill="#e2d4bc"/><polygon points="22,195 78,195 50,172" fill="#d0c0a4"/>`,
+    s3: `<rect x="26" y="210" width="6" height="35" fill="#cbb894"/><rect x="40" y="210" width="6" height="35" fill="#cbb894"/><rect x="54" y="210" width="6" height="35" fill="#cbb894"/><rect x="68" y="210" width="6" height="35" fill="#cbb894"/><circle cx="50" cy="186" r="5" fill="#e8c547"/><rect x="44" y="248" width="12" height="12" fill="#7a6a50"/>` }
+];
+
+let city = { bricks: 0, level: 0 };
+try {
+  const savedCity = JSON.parse(localStorage.getItem("cityProgress"));
+  if (savedCity && typeof savedCity.level === "number") city = savedCity;
+} catch (e) {}
+
+function saveCity() { localStorage.setItem("cityProgress", JSON.stringify(city)); }
+
+function updateCityTabLabel() {
+  document.getElementById("tabCity").textContent = "🏙️ 街 Lv." + city.level;
+}
+
+function showToast(text) {
+  const t = document.getElementById("toast");
+  t.textContent = text;
+  t.style.opacity = 1;
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => { t.style.opacity = 0; }, 2800);
+}
+
+// れんがを追加。レベルが上がったらそのレベルを返す（上がらなければ0）
+function addBricks(n) {
+  if (city.level >= 45) return 0;
+  city.bricks += n;
+  let leveledTo = 0;
+  while (city.bricks >= LEVEL_COST && city.level < 45) {
+    city.bricks -= LEVEL_COST;
+    city.level++;
+    leveledTo = city.level;
+  }
+  saveCity();
+  updateCityTabLabel();
+  if (leveledTo) {
+    const done = BUILDINGS[Math.floor((leveledTo - 1) / 3)];
+    let msg = "🏗️ 街レベル" + leveledTo + "！ " + done.name + "の" + STAGE_NAMES[(leveledTo - 1) % 3] + "ができました";
+    if (TIER_UNLOCK.indexOf(leveledTo) > 0) msg += "　💬新しい会話レベル解放！";
+    showToast(msg);
+  }
+  if (document.getElementById("screenCity").classList.contains("active")) renderCity();
+  return leveledTo;
+}
+
+function cityTaskText() {
+  if (city.level >= 45) return "🎉 全45レベル達成！スペインの街が完成しました";
+  const b = BUILDINGS[Math.floor(city.level / 3)];
+  return "いま建設中：" + b.name + " の「" + STAGE_NAMES[city.level % 3] + "」";
+}
+
+function renderCityStatus() {
+  document.getElementById("cityLevelText").textContent = "🏙️ 街レベル " + city.level + " / 45";
+  document.getElementById("cityTask").textContent = cityTaskText();
+  document.getElementById("brickFill").style.width = (city.level >= 45 ? 100 : city.bricks * 100 / LEVEL_COST) + "%";
+  document.getElementById("brickNote").textContent = city.level >= 45 ? "" :
+    "🧱れんが " + city.bricks + "/" + LEVEL_COST + "　（クイズ正解+1・発音⭕+2・会話クリア+5）";
+}
+
+function renderCity() {
+  renderCityStatus();
+  let svg = `<rect width="1560" height="260" fill="#dceefb"/><circle cx="1500" cy="45" r="24" fill="#f4d35e"/><rect y="260" width="1560" height="60" fill="#8fbf6f"/><rect y="260" width="1560" height="7" fill="#c8b48a"/>`;
+  const target = city.level < 45 ? Math.floor(city.level / 3) : -1;
+  BUILDINGS.forEach((b, i) => {
+    const stage = Math.max(0, Math.min(3, city.level - i * 3));
+    let parts = "";
+    if (stage === 0) {
+      parts = `<rect x="14" y="236" width="72" height="24" rx="4" fill="none" stroke="#a8c090" stroke-dasharray="5 4" stroke-width="2"/>`;
+    } else {
+      parts = FOUNDATION;
+      if (stage >= 2) parts += b.s2;
+      if (stage >= 3) parts += b.s3;
+    }
+    if (i === target) parts += `<text x="50" y="100" font-size="18" text-anchor="middle">🚧</text>`;
+    const nameColor = stage === 0 ? "#5a7a4a" : "#1f3f12";
+    parts += `<text x="50" y="284" text-anchor="middle" font-size="9" font-weight="bold" fill="${nameColor}">${b.name}</text>`;
+    parts += `<text x="50" y="298" text-anchor="middle" font-size="9" fill="#e8a020">${"★".repeat(stage)}${"☆".repeat(3 - stage)}</text>`;
+    svg += `<g transform="translate(${i * 104},0)">` + parts + "</g>";
+  });
+  document.getElementById("citySvg").innerHTML = svg;
+  const tierNames = ["レベル1 あいさつ", "レベル2 日常会話", "レベル3 過去と未来", "レベル4 意見", "レベル5 文化"];
+  document.getElementById("tierInfo").innerHTML = "<b>💬 会話レベルの解放状況</b><br>" + tierNames.map((n, i) =>
+    (city.level >= TIER_UNLOCK[i] ? "✅ " + n : "🔒 " + n + "（街レベル" + TIER_UNLOCK[i] + "で解放）")
+  ).join("<br>");
+}
+
+function resetCity() {
+  if (!confirm("街づくりの記録を最初からにします。いいですか？")) return;
+  city = { bricks: 0, level: 0 };
+  saveCity();
+  updateCityTabLabel();
+  renderCity();
+}
+
 // ===== タブ切り替え =====
 function switchTab(tab) {
-  const tabs = { cards: "Cards", quiz: "Quiz", grammar: "Grammar", talk: "Talk" };
+  const tabs = { cards: "Cards", quiz: "Quiz", grammar: "Grammar", talk: "Talk", city: "City" };
   for (const key in tabs) {
     document.getElementById("screen" + tabs[key]).classList.toggle("active", tab === key);
     document.getElementById("tab" + tabs[key]).classList.toggle("active", tab === key);
   }
   if (tab === "quiz") startQuiz();
   if (tab === "talk") showTalkLevels();
+  if (tab === "city") renderCity();
 }
 
 // 初期表示
 renderCategoryButtons();
 renderCard();
+updateCityTabLabel();
 </script>
 
 </body>
